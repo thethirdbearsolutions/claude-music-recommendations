@@ -540,7 +540,7 @@ Current weather: {weather}
                         {
                             id: generateUniqueId(),
                             role: 'user',
-                            content: message,
+                            content: data.request || message,
                             createdAt: timestamp,
                             appState: {...appState},
                         },
@@ -641,7 +641,7 @@ Current weather: {weather}
                 conversation.messages.push({
                   id: generateUniqueId(),
                   role: 'user',
-                  content: message,
+                  content: data.request || message,
                   createdAt: new Date().toISOString(),
                   appState: {...appState},
                 });

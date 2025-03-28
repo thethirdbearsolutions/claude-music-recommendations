@@ -36,10 +36,11 @@ def get_recommendation(request):
         context = _create_context(user_message, position, time, weather)
         
         # Get recommendation from Claude using client-provided template
-        claude_response = _get_claude_response(context, anthropic_api_key, prompt_template, system_prompt)
+        claude_response, user_request = _get_claude_response(context, anthropic_api_key, prompt_template, system_prompt)
         
         return JsonResponse({
-            'response': claude_response
+            'response': claude_response,
+            'request': user_request,
         })
     except Exception as e:
         raise
@@ -73,10 +74,11 @@ def continue_conversation(request):
         context = _create_context(user_message, position, time, weather)
         
         # Get response from Claude with message history
-        claude_response = _get_claude_response(context, anthropic_api_key, prompt_template, system_prompt, message_history)
+        claude_response, user_request = _get_claude_response(context, anthropic_api_key, prompt_template, system_prompt, message_history)
         
         return JsonResponse({
-            'response': claude_response
+            'response': claude_response,
+            'request': user_request,            
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -104,9 +106,6 @@ def _get_claude_response(context, api_key, prompt_template='', system_prompt='',
     client = anthropic.Anthropic(api_key=api_key)
 
     user_message = prompt_template.format(**context)
-
-    print(system_prompt)
-    print(user_message)
     
     try:
         if message_history:
@@ -126,7 +125,7 @@ def _get_claude_response(context, api_key, prompt_template='', system_prompt='',
                 max_tokens=1024
             )
         
-        return response.content[0].text
+        return response.content[0].text, user_message
         
     except Exception as e:
         error_message = str(e)
