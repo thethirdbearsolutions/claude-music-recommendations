@@ -784,8 +784,10 @@ Current weather: {weather}
             };
             
             localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
-            
-            // Show welcome screen
+
+            // Fetch position and weather now that we hopefully have a key
+            loadLocation();
+
             showWelcomeScreen();
         }
 
