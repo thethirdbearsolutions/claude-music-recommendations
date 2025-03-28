@@ -352,12 +352,17 @@
                             <span class="input-hint">Optional - used for weather information</span>
                         </div>
                         <div class="form-group">
+                            <label for="system-prompt">System Prompt</label>
+                            <textarea id="system-prompt" rows="12"></textarea>
+                            <span class="input-hint">Customize the system prompt sent to Claude</span>
+                        </div>
+                        <div class="form-group">
                             <label for="prompt-template">Prompt Template</label>
                             <div class="placeholder-markers">
                                 Available placeholders: <code>{position}</code>, <code>{time}</code>, <code>{weather}</code>, <code>{user_message}</code>
                             </div>
                             <textarea id="prompt-template" rows="12"></textarea>
-                            <span class="input-hint">Customize the prompt sent to Claude</span>
+                            <span class="input-hint">Customize the user message sent to Claude</span>
                         </div>
                         <div class="actions-container">
                             <button id="reset-template-btn" type="button" class="btn btn-outline">Reset to Default</button>
@@ -406,6 +411,7 @@
         const anthropicApiKeyInput = document.getElementById('anthropic-api-key');
         const openweatherApiKeyInput = document.getElementById('openweather-api-key');
         const promptTemplateInput = document.getElementById('prompt-template');
+        const systemPromptInput = document.getElementById('system-prompt');     
         const resetTemplateBtn = document.getElementById('reset-template-btn');
         const welcomeError = document.getElementById('welcome-error');
         const settingsError = document.getElementById('settings-error');
@@ -422,17 +428,17 @@
         const STORAGE_KEY_CONVERSATIONS = 'musicMood_conversations';
         const STORAGE_KEY_SETTINGS = 'musicMood_settings';
 
-        // Default prompt template
-        const DEFAULT_PROMPT_TEMPLATE = `I want a music recommendation. I'll give you more details when I ask for it, but here are my preferences in general: unless I say otherwise, make sure the recommendation is broadly classical, preferably early modern; you must never give me (or even mention) Beethoven or Copland; and you should usually lean toward chamber music.
+        const DEFAULT_SYSTEM_PROMPT = `I want a music recommendation. I'll give you more details when I ask for it, but here are my preferences in general: unless I say otherwise, make sure the recommendation is broadly classical, preferably early modern; you must never give me (or even mention) Beethoven or Copland; and you should usually lean toward chamber music.
 
 Do not repeat these general preferences in your reply -- do not say anything similar to "based on your preferences for..." or "since you don't like..." -- just engage with the substance of the request and talk about your recommendation.
 
-At the end of your recommendation, please construct a URL to search for your chosen piece on Google Videos using this template: \`https://www.google.com/search?tbm=vid&q=YOUR+QUERY\`
+At the end of your recommendation, please construct a URL to search for your chosen piece on Google Videos using this template: \`https://www.google.com/search?tbm=vid&q=YOUR+QUERY\``.trim();
 
+        const DEFAULT_PROMPT_TEMPLATE = `Current location: {position}
 Current date and time: {time}
 Current weather: {weather}
 
-{user_message}`;
+{user_message}`.trim();
 
         // Event Listeners
         document.addEventListener('DOMContentLoaded', () => {
@@ -455,7 +461,8 @@ Current weather: {weather}
         });
 
         resetTemplateBtn.addEventListener('click', () => {
-            promptTemplateInput.value = DEFAULT_PROMPT_TEMPLATE;
+          promptTemplateInput.value = DEFAULT_PROMPT_TEMPLATE;
+          systemPromptInput.value = DEFAULT_SYSTEM_PROMPT;
         });
 
         sendMessageBtn.addEventListener('click', () => sendMessage());
@@ -497,7 +504,8 @@ Current weather: {weather}
               time: (new Date()).toLocaleString(),
               weather: `${appState.weather.main.feels_like}°F, ${appState.weather.weather[0].description}, visibility ${appState.weather.visibility}m`,
               anthropicApiKey: settings.anthropicApiKey,
-              promptTemplate: settings.promptTemplate
+              promptTemplate: settings.promptTemplate,
+              systemPrompt: settings.systemPrompt,
             };
 
             fetch('/api/music/recommendations/', {
@@ -613,7 +621,8 @@ Current weather: {weather}
                   weather: `${appState.weather.main.feels_like}°F, ${appState.weather.weather[0].description}, visibility ${appState.weather.visibility}m`,
                   messageHistory: messageHistory,
                   anthropicApiKey: settings.anthropicApiKey,
-                  promptTemplate: settings.promptTemplate
+                  promptTemplate: settings.promptTemplate,
+                  systemPrompt: settings.systemPrompt,
                 })
             })
             .then(response => {
@@ -749,11 +758,12 @@ Current weather: {weather}
 
         // Settings Functions
         function loadSettings() {
-            const settings = getSettings();
+          const settings = getSettings();
             
-            anthropicApiKeyInput.value = settings.anthropicApiKey || '';
-            openweatherApiKeyInput.value = settings.openweatherApiKey || '';
-            promptTemplateInput.value = settings.promptTemplate || DEFAULT_PROMPT_TEMPLATE;
+          anthropicApiKeyInput.value = settings.anthropicApiKey || '';
+          openweatherApiKeyInput.value = settings.openweatherApiKey || '';
+          promptTemplateInput.value = settings.promptTemplate || DEFAULT_PROMPT_TEMPLATE;
+          systemPromptInput.value = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
         }
 
         function saveSettings() {
@@ -767,9 +777,10 @@ Current weather: {weather}
             
             // Save settings
             const settings = {
-                anthropicApiKey: anthropicApiKeyInput.value,
-                openweatherApiKey: openweatherApiKeyInput.value,
-                promptTemplate: promptTemplateInput.value || DEFAULT_PROMPT_TEMPLATE
+              anthropicApiKey: anthropicApiKeyInput.value,
+              openweatherApiKey: openweatherApiKeyInput.value,
+              promptTemplate: promptTemplateInput.value || DEFAULT_PROMPT_TEMPLATE,
+              systemPrompt: systemPromptInput.value || DEFAULT_SYSTEM_PROMPT,
             };
             
             localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
@@ -785,6 +796,9 @@ Current weather: {weather}
             // Set defaults if not present
             if (!settings.promptTemplate) {
                 settings.promptTemplate = DEFAULT_PROMPT_TEMPLATE;
+            }
+            if (!settings.systemPrompt) {
+                settings.systemPrompt = DEFAULT_SYSTEM_PROMPT;
             }
             
             return settings;

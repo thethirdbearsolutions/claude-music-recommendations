@@ -19,6 +19,7 @@ def get_recommendation(request):
     try:
         data = json.loads(request.body)
         user_message = data.get('message')
+        system_prompt = data.get('systemPrompt')
         position = data.get('position')
         time = data.get('time')
         weather = data.get('weather')
@@ -35,7 +36,7 @@ def get_recommendation(request):
         context = _create_context(user_message, position, time, weather)
         
         # Get recommendation from Claude using client-provided template
-        claude_response = _get_claude_response(context, anthropic_api_key, prompt_template)
+        claude_response = _get_claude_response(context, anthropic_api_key, prompt_template, system_prompt)
         
         return JsonResponse({
             'response': claude_response
@@ -53,6 +54,7 @@ def continue_conversation(request):
     try:
         data = json.loads(request.body)
         user_message = data.get('message')
+        system_prompt = data.get('systemPrompt')
         position = data.get('position')
         time = data.get('time')
         weather = data.get('weather')        
@@ -71,7 +73,7 @@ def continue_conversation(request):
         context = _create_context(user_message, position, time, weather)
         
         # Get response from Claude with message history
-        claude_response = _get_claude_response(context, anthropic_api_key, prompt_template, message_history)
+        claude_response = _get_claude_response(context, anthropic_api_key, prompt_template, system_prompt, message_history)
         
         return JsonResponse({
             'response': claude_response
@@ -92,7 +94,7 @@ def _create_context(user_message, position, time, weather):
     
     return context
 
-def _get_claude_response(context, api_key, prompt_template=None, message_history=None):
+def _get_claude_response(context, api_key, prompt_template='', system_prompt='', message_history=None):
     """
     Get a response from Claude API
     """
@@ -100,43 +102,27 @@ def _get_claude_response(context, api_key, prompt_template=None, message_history
         raise ValueError("Anthropic API key is required")
     
     client = anthropic.Anthropic(api_key=api_key)
-    
-    # Use default template if none provided
-    if not prompt_template:
-        prompt_template = """
-        I want a music recommendation. I'll give you more details when I ask for it, but here are my preferences in general: unless I say otherwise, make sure the recommendation is broadly classical, preferably early modern; you must never give me (or even mention) Beethoven or Copland; and you should usually lean toward chamber music.
 
-        Do not repeat these general preferences in your reply -- do not say anything similar to "based on your preferences for..." or "since you don't like..." -- just engage with the substance of the request and talk about your recommendation.
-
-        At the end of your recommendation, please construct a URL to search for your chosen piece on Google Videos using this template: `https://www.google.com/search?tbm=vid&q=YOUR+QUERY`
-        
-        Current location: {position}
-        Current date and time: {time}
-        Current weather: {weather}
-
-        {user_message}
-        """
-
-    # Format the system prompt with context
-    system_prompt = prompt_template.format(**context)
+    user_message = prompt_template.format(**context)
 
     print(system_prompt)
+    print(user_message)
     
     try:
         if message_history:
             # Continue conversation
             response = client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-3-7-sonnet-latest",
                 system=system_prompt,
-                messages=message_history + [{"role": "user", "content": context['user_message']}],
+                messages=message_history + [{"role": "user", "content": user_message}],
                 max_tokens=1024
             )
         else:
             # New conversation
             response = client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-3-7-sonnet-latest",
                 system=system_prompt,
-                messages=[{"role": "user", "content": context['user_message']}],
+                messages=[{"role": "user", "content": user_message}],
                 max_tokens=1024
             )
         
